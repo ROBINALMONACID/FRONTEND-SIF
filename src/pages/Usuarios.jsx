@@ -4,14 +4,14 @@ import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import Pagination from '../components/Pagination'
 import { fetchPaginatedData } from '../services/dataService'
-import userService from '../services/userService'
-import { ERROR_CODES } from '../services/errorCodes'
+import { useAuth } from '../context/AuthContext'
 import logger, { getErrorMessage } from '../utils/logger'
 
 export default function Usuarios() {
   const [usuarios, setUsuarios] = useState([])
   const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
+  const { user: currentUser } = useAuth()
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
@@ -53,20 +53,6 @@ export default function Usuarios() {
     loadUsuarios()
   }, [loadUsuarios])
 
-  async function handleDelete(id_usuario) {
-    if (!confirm('¿Eliminar este usuario?')) return
-    try {
-      logger.info('Usuarios', `Eliminando usuario ID: ${id_usuario}`)
-      await userService.delete(id_usuario)
-      logger.success('Usuarios', 'Usuario eliminado exitosamente')
-      toast.success('Usuario eliminado exitosamente')
-      loadUsuarios()
-    } catch (error) {
-      logger.error('Usuarios', 'Error al eliminar usuario', error)
-      toast.error(getErrorMessage(error))
-    }
-  }
-
   return (
     <div className="usuarios-section">
       <div className="usuarios-header d-flex justify-content-between align-items-center mb-3">
@@ -81,10 +67,10 @@ export default function Usuarios() {
           style={{ maxWidth: 260 }}
           placeholder="Buscar por correo o idioma..."
           value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          onChange={(e) => { setSearch(e.target.value); setPage(1) }}
         />
         <label className="form-label mb-0">Mostrar:</label>
-        <select className="form-select" value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }} style={{ width: 80 }}>
+        <select className="form-select" value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1) }} style={{ width: 80 }}>
           <option value={5}>5</option>
           <option value={10}>10</option>
           <option value={20}>20</option>
@@ -109,25 +95,29 @@ export default function Usuarios() {
               {usuarios.length === 0 ? (
                 <tr><td colSpan={5} className="text-center text-muted">No hay usuarios</td></tr>
               ) : (
-                usuarios.map((u) => (
-                  <tr key={u.id_usuario}>
-                    <td>{u.correo_electronico}</td>
-                    <td>{u.idioma}</td>
-                    <td>{Number(u.activado) === 1 || u.activado === true ? 'Sí' : 'No'}</td>
-                    <td>{u.nombre_rol || '-'}</td>
-                    <td>
-                      <button className="btn btn-sm btn-primary me-2" onClick={() => {
-                        console.log('Editando usuario:', u.id_usuario);
-                        navigate(`/usuarios/editar/${u.id_usuario}`);
-                      }}>
-                        <i className="bi bi-pencil" />
-                      </button>
-                      <button className="btn btn-sm btn-danger" onClick={() => handleDelete(u.id_usuario)}>
-                        <i className="bi bi-trash" />
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                usuarios.map((u) => {
+                  const isCurrentUser = currentUser?.id_usuario === u.id_usuario
+
+                  return (
+                    <tr key={u.id_usuario}>
+                      <td>{u.correo_electronico}</td>
+                      <td>{u.idioma}</td>
+                      <td>{Number(u.activado) === 1 || u.activado === true ? 'Sí' : 'No'}</td>
+                      <td>{u.nombre_rol || '-'}</td>
+                      <td>
+                        {isCurrentUser && (
+                          <span className="badge bg-secondary me-2">Sesión actual</span>
+                        )}
+                        <button className="btn btn-sm btn-primary" onClick={() => {
+                          console.log('Editando usuario:', u.id_usuario)
+                          navigate(`/usuarios/editar/${u.id_usuario}`)
+                        }}>
+                          <i className="bi bi-pencil" />
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })
               )}
             </tbody>
           </table>
