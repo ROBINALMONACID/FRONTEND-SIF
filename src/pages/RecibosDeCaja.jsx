@@ -1,5 +1,6 @@
 // src/pages/RecibosDeCaja.jsx - VERSIÓN REFACTORIZADA
 import React from 'react'
+import { format } from 'date-fns'
 import { toast } from 'react-toastify'
 import api from '../services/api'
 import { useRecibosDeCaja } from '../hooks/useRecibosDeCaja'
@@ -161,6 +162,8 @@ export default function RecibosDeCaja() {
 
       const payload = {
         id_cliente: parseInt(recibo.cliente) || 0,
+        // Enviar ambas claves para compatibilidad con backend
+        metodo_pago: metodoPagoFormato,
         tipo_pago: metodoPagoFormato,
         productos: recibo.items.map(item => ({
           id_producto: parseInt(item.id_producto) || 0,
@@ -186,7 +189,7 @@ export default function RecibosDeCaja() {
         items: [],
         metodoPago: '',
         pago: '',
-        fecha: new Date().toISOString().slice(0, 16),
+        fecha: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
         numero: siguienteNumero,
         correo: '',
         direccion: ''

@@ -59,10 +59,44 @@ export default function HistorialRecibosDeCaja() {
     cargarDatos()
   }, [])
 
+  function normalizeId(value) {
+    if (value === null || value === undefined) return null
+    const n = Number(value)
+    return Number.isNaN(n) ? value : n
+  }
+
   function nombreCliente(id) {
-    const c = clientes.find(x => x.id_cliente === id)
+    const idNorm = normalizeId(id)
+    const c = clientes.find(x => normalizeId(x.id_cliente) === idNorm)
     if (!c) return id
     return c.nombre_completo || ''
+  }
+
+  function getMetodoPagoValue(recibo) {
+    const raw =
+      recibo.tipo_pago ??
+      recibo.metodo_pago ??
+      recibo.metodoPago ??
+      recibo.forma_pago ??
+      recibo.formaPago ??
+      recibo.tipoPago ??
+      recibo.metodo ??
+      recibo.pago
+
+    if (!raw) return ''
+    if (typeof raw === 'string') return raw
+    return raw.nombre || raw.descripcion || raw.label || raw.value || ''
+  }
+
+  function normalizeMetodoPago(value) {
+    if (!value) return ''
+    return value
+      .toString()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[_-]/g, ' ')
+      .trim()
+      .toLowerCase()
   }
 
   async function handleFiltrar(e) {
@@ -297,15 +331,22 @@ export default function HistorialRecibosDeCaja() {
                       <td className="px-4 py-3">
                         <div>
                           <div className="fw-semibold">
-                            {nombreCliente(recibo.id_cliente) || 'Cliente no registrado'}
+                          {nombreCliente(recibo.id_cliente || recibo.idCliente || recibo.cliente_id) || 'Cliente no registrado'}
                           </div>
-                          <small className="text-muted">ID: {recibo.id_cliente}</small>
+                          <small className="text-muted">ID: {recibo.id_cliente || recibo.idCliente || recibo.cliente_id}</small>
                         </div>
                       </td>
                       <td className="px-4 py-3">
                         <span className="badge bg-light text-dark">
-                          <i className={`bi ${getPaymentIcon(recibo.tipo_pago)} me-1`}></i>
-                          {recibo.tipo_pago}
+                          {(() => {
+                            const metodo = getMetodoPagoValue(recibo)
+                            return (
+                              <>
+                                <i className={`bi ${getPaymentIcon(metodo)} me-1`}></i>
+                                {metodo || 'No especificado'}
+                              </>
+                            )
+                          })()}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-end">
@@ -363,11 +404,11 @@ export default function HistorialRecibosDeCaja() {
               <div className="modal-body">
                 <div className="row mb-4">
                   <div className="col-md-6">
-                    <p><strong>Fecha:</strong> {new Date(selectedRecibo.fecha_recibo_caja).toLocaleString('es-ES')}</p>
-                    <p><strong>Cliente:</strong> {nombreCliente(selectedRecibo.id_cliente) || 'Cliente no registrado'}</p>
+                    <p><strong>Fecha:</strong> {new Date(selectedRecibo.fecha_recibo_caja || selectedRecibo.fecha_creacion || selectedRecibo.fecha).toLocaleString('es-ES')}</p>
+                    <p><strong>Cliente:</strong> {nombreCliente(selectedRecibo.id_cliente || selectedRecibo.idCliente || selectedRecibo.cliente_id) || 'Cliente no registrado'}</p>
                   </div>
                   <div className="col-md-6">
-                    <p><strong>Método de Pago:</strong> {selectedRecibo.tipo_pago || 'No especificado'}</p>
+                    <p><strong>Método de Pago:</strong> {getMetodoPagoValue(selectedRecibo) || 'No especificado'}</p>
                     <p><strong>Total:</strong> <span className="text-success fw-bold fs-5">{formatCurrency(selectedRecibo.total)}</span></p>
                   </div>
                 </div>
@@ -509,9 +550,9 @@ export default function HistorialRecibosDeCaja() {
 
           <div class="receipt-info">
             <strong>Número de Recibo:</strong> ${reciboCompleto.numero_recibo_caja}<br>
-            <strong>Fecha:</strong> ${new Date(reciboCompleto.fecha_recibo_caja).toLocaleString('es-ES')}<br>
-            <strong>Cliente:</strong> ${nombreCliente(reciboCompleto.id_cliente) || 'Cliente no registrado'}<br>
-            <strong>Método de Pago:</strong> ${reciboCompleto.tipo_pago || 'No especificado'}
+            <strong>Fecha:</strong> ${new Date(reciboCompleto.fecha_recibo_caja || reciboCompleto.fecha_creacion || reciboCompleto.fecha).toLocaleString('es-ES')}<br>
+            <strong>Cliente:</strong> ${nombreCliente(reciboCompleto.id_cliente || reciboCompleto.idCliente || reciboCompleto.cliente_id) || 'Cliente no registrado'}<br>
+            <strong>Método de Pago:</strong> ${getMetodoPagoValue(reciboCompleto) || 'No especificado'}
           </div>
 
           <table class="products-table">
@@ -562,14 +603,18 @@ export default function HistorialRecibosDeCaja() {
   }
 
   function getPaymentIcon(method) {
+    const normalized = normalizeMetodoPago(method)
     const icons = {
       'efectivo': 'bi-cash',
-      'tarjeta_credito': 'bi-credit-card',
-      'tarjeta_debito': 'bi-credit-card-2-front',
+      'tarjeta': 'bi-credit-card',
+      'tarjeta credito': 'bi-credit-card',
+      'tarjeta debito': 'bi-credit-card-2-front',
+      'tarjeta de credito': 'bi-credit-card',
+      'tarjeta de debito': 'bi-credit-card-2-front',
       'transferencia': 'bi-bank',
       'cheque': 'bi-receipt',
       'otro': 'bi-wallet'
-    };
-    return icons[method?.toLowerCase()] || 'bi-wallet';
+    }
+    return icons[normalized] || 'bi-wallet'
   }
 }

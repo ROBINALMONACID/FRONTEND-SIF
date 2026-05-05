@@ -154,6 +154,7 @@ export default function ActualizarUsuario() {
       const payload = {
         correo_electronico: usuario.correo_electronico,
         idioma: usuario.idioma || 'es',
+        activado: Number(usuario.activado) === 1 || usuario.activado === true,
         id_rol: Number(rolSeleccionado)
       }
       
